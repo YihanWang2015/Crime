@@ -1,5 +1,6 @@
 package edu.kvcc.cis298.inclass3.inclass3;
 
+import android.content.Intent;
 import android.os.Bundle;
 import android.support.annotation.Nullable;
 import android.support.v4.app.Fragment;
@@ -61,6 +62,17 @@ public class CrimeListFragment extends Fragment {
         return view;
     }
 
+    //When this Fragment is resumed from a paused state such as
+    //returning to this fragments hosting activity from some other
+    //activity, this method will get called, and we can use it to
+    //update the UI of the fragment.
+    @Override
+    public void onResume() {
+        super.onResume();
+        //Update the UI
+        updateUI();
+    }
+
     private void updateUI() {
         //Get the collection of data from the crimelab
         //singleton. The get method constructor requires that
@@ -71,14 +83,25 @@ public class CrimeListFragment extends Fragment {
         //Get the actaul list of crimes from the CrimeLab class
         List<Crime> crimes = crimeLab.getCrimes();
 
-        //Create a new crimeAdapter and send it over the list
-        //of crimes. Crime adapter needs the list of crimes so
-        //that it can work with the recyclerview to display them.
-        mAdapter = new CrimeAdapter(crimes);
+        //If the adapter hasn't been created yet, we want to create it
+        //and set the Adapter for the Recycler view.
+        if (mAdapter == null) {
 
-        //Take the adapter that we just created, and set it as the
-        //adapter that the recycler view is going to use.
-        mCrimeRecyclerView.setAdapter(mAdapter);
+            //Create a new crimeAdapter and send it over the list
+            //of crimes. Crime adapter needs the list of crimes so
+            //that it can work with the recyclerview to display them.
+            mAdapter = new CrimeAdapter(crimes);
+
+            //Take the adapter that we just created, and set it as the
+            //adapter that the recycler view is going to use.
+            mCrimeRecyclerView.setAdapter(mAdapter);
+
+        //Else, the adapter already exists, so we just need to notify
+        //that the data set might have changed. This will
+        //automatically update any data changes for us.
+        } else {
+            mAdapter.notifyDataSetChanged();
+        }
 
     }
 
@@ -128,9 +151,13 @@ public class CrimeListFragment extends Fragment {
         //do the work toasting the title of the crime that was clicked on.
         @Override
         public void onClick(View view) {
-            Toast.makeText(getActivity(),
-                    mCrime.getTitle() + " clicked!",
-                    Toast.LENGTH_SHORT).show();
+            //Ask CrimeActivity for an intent that will get the CrimeActivity
+            //started. The method requires us to pass the Context, which we can
+            //get from calling getActivity(), and the id of the crime we want
+            //to start the activity with. Once we have the intent, we call
+            //startActivity to start it.
+            Intent intent = CrimeActivity.newIntent(getActivity(), mCrime.getId());
+            startActivity(intent);
         }
     }
 

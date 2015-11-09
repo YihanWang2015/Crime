@@ -15,8 +15,14 @@ import android.widget.CheckBox;
 import android.widget.CompoundButton;
 import android.widget.EditText;
 
+import java.util.UUID;
+
 
 public class CrimeFragment extends Fragment {
+
+    //static string to be used as the key for parameters we set
+    //and retrieve from the bundle
+    private static final String ARG_CRIME_ID = "crime_id";
 
     //Declare a class level variable for a crime
     private Crime mCrime;
@@ -24,13 +30,53 @@ public class CrimeFragment extends Fragment {
     private Button mDateButton;
     private CheckBox mSolvedCheckBox;
 
+    //This is a static method that is used to create a new instance
+    //of a CrimeFragment with the correct information of a Crime
+    //based on a UUID that is passed in. Any Activity including
+    //the one we are using (Crime Activity) can call this method
+    //and get a properly created CrimeFragment. The method takes the
+    //UUID that is passed in, and then sets it in an argument bundle
+    //that can be passed along with the Fragment. Once the fragement
+    //is started, the data in the bundle can be retrived and used.
+    public static CrimeFragment newInstance(UUID crimeId) {
+        //Create a new arguments bundle
+        Bundle args = new Bundle();
+        //Put the UUID in as a value to the bundle.
+        args.putSerializable(ARG_CRIME_ID, crimeId);
+
+        //Create a new instance of this fragment
+        CrimeFragment fragment = new CrimeFragment();
+        //Set the arguments on the fragment with the bundle
+        fragment.setArguments(args);
+        //finally return the fragment that was created.
+        return fragment;
+    }
+
+
+
     //This method does not do the inflating of the view
     //like the onCreate for an activity does
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        //Create a new instance of a crime
-        mCrime = new Crime();
+
+        //Now that the Fragment is being started with any UUID passed
+        //by the Bundle called savedInstanceState, we need to fetch
+        //out the CrimeId from the bundle.
+        //Get the UUID as a serializable, and then cast it to type UUID
+        UUID crimeId = (UUID) getArguments().getSerializable(ARG_CRIME_ID);
+
+        //We want to get a specific crime from our Crime collection
+        //based on the UUID that we have. In order to do that, we
+        //get the (singleton) instance of our crime lab by calling
+        //the static method 'get' on CrimeLab.
+        CrimeLab lab = CrimeLab.get(getActivity());
+
+        //Now that we have the crime lab, we can call the
+        //getCrime method on it passing in the UUID to get back
+        //a single crime.
+        mCrime = lab.getCrime(crimeId);
+
     }
 
     //This method IS responisble for inflating the view
@@ -41,6 +87,7 @@ public class CrimeFragment extends Fragment {
         View v = inflater.inflate(R.layout.fragment_crime, container, false);
 
         mTitleField = (EditText)v.findViewById(R.id.crime_title);
+        mTitleField.setText(mCrime.getTitle());
         mTitleField.addTextChangedListener(new TextWatcher() {
             @Override
             public void beforeTextChanged(CharSequence charSequence, int i, int i1, int i2) {
@@ -72,6 +119,7 @@ public class CrimeFragment extends Fragment {
         //Set the on Check Changed Listener. CheckBox is a subclass of the
         //CompoundButton class. That is why we use that class to setup the
         //new listener.
+        mSolvedCheckBox.setChecked(mCrime.isSolved());
         mSolvedCheckBox.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
             @Override
             public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
