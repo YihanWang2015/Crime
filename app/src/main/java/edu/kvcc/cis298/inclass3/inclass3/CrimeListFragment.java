@@ -156,7 +156,7 @@ public class CrimeListFragment extends Fragment {
             //get from calling getActivity(), and the id of the crime we want
             //to start the activity with. Once we have the intent, we call
             //startActivity to start it.
-            Intent intent = CrimeActivity.newIntent(getActivity(), mCrime.getId());
+            Intent intent = CrimePagerActivity.newIntent(getActivity(), mCrime.getId());
             startActivity(intent);
         }
     }
