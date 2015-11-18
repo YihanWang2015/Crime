@@ -1,6 +1,7 @@
 package edu.kvcc.cis298.inclass3.inclass3;
 
 import android.app.Activity;
+import android.content.Intent;
 import android.net.Uri;
 import android.os.Bundle;
 import android.support.annotation.Nullable;
@@ -16,6 +17,7 @@ import android.widget.CheckBox;
 import android.widget.CompoundButton;
 import android.widget.EditText;
 
+import java.util.Date;
 import java.util.UUID;
 
 
@@ -121,7 +123,7 @@ public class CrimeFragment extends Fragment {
         mDateButton = (Button)v.findViewById(R.id.crime_date);
         //Set the text on the date button to the date from the crime
         //model converted to a string.
-        mDateButton.setText(mCrime.getDate().toString());
+        updateDate();
 
         //Disable the button so it doesn't do anything until we wire
         //it up to do something.
@@ -170,5 +172,47 @@ public class CrimeFragment extends Fragment {
         });
 
         return v;
+    }
+
+    //This method will be called when the result of an activity returns
+    //back to this hosted activty. Note that this method is part of the
+    //fragment. Fragments have thier own 'copy' of onActivityResult that
+    //will get called when the hosting Activities onActivityResult is called.
+    //
+    //We are not doing any work here from return to this Activity.
+    //instead, we are making an explicit call to this method to
+    //get the results of the date picker dialog. Over in the datepicker
+    //fragement class, on the onclicklistener for the ok button, we make
+    //an explicit call to this method.
+    @Override
+    public void onActivityResult(int requestCode, int resultCode, Intent data) {
+
+        //Do a check to see if the result code is OK. it should always
+        //be okay with what we have written.
+        if (resultCode != Activity.RESULT_OK) {
+            return;
+        }
+
+        //Since we can count on the Result being OK, we need to do the
+        //work of checking the request code, and making sure that it
+        //matches the request code we sent when we started up the
+        //date picker dialog. In other words, we only want to do this
+        //work if we are coming back from the date dialog.
+        if (requestCode == REQUEST_DATE) {
+            //Create a new date by fetching the date extra out of the
+            //intent that was used to send data to this method
+            Date date = (Date) data.getSerializableExtra(DatePickerFragment.EXTRA_DATE);
+            //Set the date on the Model
+            mCrime.setDate(date);
+            //Call the methed that we extracted with refactor to update
+            //the text on the button that starts the date picker.
+            updateDate();
+        }
+    }
+
+    //Method that we extracted from a duplicated line to update the
+    //date on the method that launches the date picker.
+    private void updateDate() {
+        mDateButton.setText(mCrime.getDate().toString());
     }
 }
