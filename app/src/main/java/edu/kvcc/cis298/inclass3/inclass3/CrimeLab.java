@@ -53,6 +53,10 @@ public class CrimeLab {
         }
     }
 
+    public void addCrime(Crime c) {
+        mCrimes.add(c);
+    }
+
     //Getter to get the crimes
     public List<Crime> getCrimes() {
         return mCrimes;
