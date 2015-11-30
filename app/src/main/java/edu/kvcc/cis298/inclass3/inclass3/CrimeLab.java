@@ -2,6 +2,7 @@ package edu.kvcc.cis298.inclass3.inclass3;
 
 import android.content.ContentValues;
 import android.content.Context;
+import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 
 import java.util.ArrayList;
@@ -9,6 +10,7 @@ import java.util.List;
 import java.util.UUID;
 
 import edu.kvcc.cis298.inclass3.inclass3.database.CrimeBaseHelper;
+import edu.kvcc.cis298.inclass3.inclass3.database.CrimeCursorWrapper;
 import edu.kvcc.cis298.inclass3.inclass3.database.CrimeDbSchema;
 import edu.kvcc.cis298.inclass3.inclass3.database.CrimeDbSchema.CrimeTable;
 
@@ -149,7 +151,34 @@ public class CrimeLab {
     //Getter to get the crimes
     public List<Crime> getCrimes() {
        // return mCrimes;
-        return new ArrayList<>();
+      //  return new ArrayList<>();
+
+
+        //Create a List to hold all of the crimes
+        List<Crime> crimes = new ArrayList<>();
+
+        //Create a new crimeCursorWrapper. It will be returned from the call to queryCrimes,
+        // which is the method written at the bottom of this class.
+        // We pass in null for both parameters because we do not want a Where clause, nor where parameters
+        //(null, null)  => (where, where args)
+        CrimeCursorWrapper cursor = queryCrimes(null, null);
+        try{
+            //move to the first entry in the data result
+            cursor.moveToFirst();
+            //while there is another entry in the data result
+            while (!cursor.isAfterLast()){
+                //call the getCrime method which will do the work of taking the data from the 'read' row and turn it into a new crime.
+                //The returned crime gets added to the list.
+                crimes.add(cursor.getCrime());
+                //Move to the next row in the result set
+                cursor.moveToNext();
+            }
+        } finally {
+            //close the cursor
+            cursor.close();
+        }
+        //return the crimes list
+        return crimes;
     }
 
     //Method to get a specific crime based on the
@@ -164,7 +193,35 @@ public class CrimeLab {
 //            }
 //        }
         //no match, return null.
-        return null;
+       // return null;
+
+
+
+
+        //Create a new crimeCursorWrapper. This time we are passing in a where clause,
+        // and a string array that is the where arguments.
+        // This will narrow our query down to a single entry with the passed in UUID.
+        CrimeCursorWrapper cursor = queryCrimes(
+                CrimeTable.Cols.UUID + " = ? ",
+                new String[] {id.toString()}
+        );
+
+        try{
+            //if we did not get a result
+            if(cursor.getCount() == 0){
+                //return null. didn't find it.
+                return null;
+            }
+            //move to the first entry in the result set
+            cursor.moveToFirst();
+            //return the result changed over to a Crime model
+            return cursor.getCrime();
+
+        }finally {
+            //close the cursor
+            cursor.close();
+        }
+
     }
 
 
@@ -212,5 +269,22 @@ public class CrimeLab {
     }
 
 
+
+    //Method to query the crimes table for crimes. It takes in a where clause and where args that can be used for the query.
+    //It will return a result set that we can look through to see the returned crimes.
+    private CrimeCursorWrapper queryCrimes(String whereClause, String[] whereArgs){
+        Cursor cursor = mDatabase.query(
+
+        CrimeTable.NAME, //Table name
+                null, //columns. null means all of them
+                whereClause,//where
+                whereArgs,//args for where
+                null,//group by
+                null,//having
+                null//order by
+        );
+      //  return cursor;
+        return new CrimeCursorWrapper(cursor);
+    }
 
 }

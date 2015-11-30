@@ -14,12 +14,31 @@ public class Crime {
     private Date mDate;
     private boolean mSolved;
 
+
+
+    //No parameter constructor. Generates a new UUID and then calls the single parameter constructor to create the new Crime.
+
     //Default constructor
     public Crime() {
         //Make a new unique id for this particular crime
-        mId = UUID.randomUUID();
-        mDate = new Date();
+       // mId = UUID.randomUUID();
+       // mDate = new Date();
+
+
+        //Make a new unique id for this particular crime and use the other constructor to get it created.
+        this(UUID.randomUUID());
     }
+
+
+    //Single parameter constructor that takes in a UUID an assigns it.
+    public Crime(UUID id)
+    {
+        mId = id;
+        mDate = new Date();
+
+    }
+
+
 
     //Getters and Setters
     //Only need to get the UUID, no need to set it, so no setter
