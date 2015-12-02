@@ -2,13 +2,17 @@ package edu.kvcc.cis298.inclass3.inclass3;
 
 import android.app.Activity;
 import android.content.Intent;
+import android.content.pm.PackageManager;
+import android.database.Cursor;
 import android.net.Uri;
 import android.os.Bundle;
+import android.provider.ContactsContract;
 import android.support.annotation.Nullable;
 import android.support.v4.app.Fragment;
 import android.support.v4.app.FragmentManager;
 import android.text.Editable;
 import android.text.TextWatcher;
+import android.text.format.DateFormat;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -16,6 +20,8 @@ import android.widget.Button;
 import android.widget.CheckBox;
 import android.widget.CompoundButton;
 import android.widget.EditText;
+
+//import java.text.DateFormat;
 
 import java.util.Date;
 import java.util.UUID;
@@ -38,11 +44,21 @@ public class CrimeFragment extends Fragment {
     //some other activity. That's why we need this code.
     private static final int REQUEST_DATE = 0;
 
+    //Setup a request code that will be used when getting the result of the selecte contact implicit intent.
+    private static final int REQUEST_CONTACT =1;
+
+
     //Declare a class level variable for a crime
     private Crime mCrime;
     private EditText mTitleField;
     private Button mDateButton;
     private CheckBox mSolvedCheckBox;
+
+    private Button mSuspectButton;
+    private Button mReportButton;
+
+
+
 
     //This is a static method that is used to create a new instance
     //of a CrimeFragment with the correct information of a Crime
@@ -171,6 +187,58 @@ public class CrimeFragment extends Fragment {
             }
         });
 
+
+        //Get a handler to the report button
+        mReportButton = (Button)v.findViewById(R.id.crime_report);
+        //Set the onclick listener
+        mReportButton.setOnClickListener(new View.OnClickListener(){
+            @Override
+            public void onClick(View v){
+                //create a new intent.
+                //Unlike before when we created a new intent, this time we are passing in the ACTION we want to perform.
+                //we are using pre-defined Actions that come as part of the Intent class.
+                Intent i = new Intent(Intent.ACTION_SEND);
+                //This line sets the MIME type so that the receiving app can infer what to do with the data.
+                //Different MIME types might mean different actions on the receiving end.
+                i.setType("text/plain");
+                //Add the data to the intent. This operates the same as when we did Explicit ones, with one minor change.
+                //We no longer need to use a String that we create as a KEY.
+                //We instead use pre-defined keys that are part of the Intent class.
+                //This way all apps can look for this universal parameter.
+                i.putExtra(Intent.EXTRA_TEXT, getCrimeReport());
+                i.putExtra(Intent.EXTRA_SUBJECT, getString(R.string.crime_report_subject));
+
+                //add some extra parameters to the intent so that it will always prompt for the selector as to which app
+                //to use for this implicit intent.
+                i = Intent.createChooser(i, getString(R.string.send_report));
+
+                //With all of the stuff for the intent setup, we launch it just like we did with explicit ones.
+                startActivity(i);
+            }
+        });
+
+
+        final Intent pickContact = new Intent(Intent.ACTION_PICK, ContactsContract.Contacts.CONTENT_URI);
+
+       // pickContact.addCategory(Intent.CATEGORY_HOME);
+        mSuspectButton = (Button)v.findViewById(R.id.crime_suspect);
+        mSuspectButton.setOnClickListener(new View.OnClickListener(){
+            public void onClick(View v){
+                startActivityForResult(pickContact, REQUEST_CONTACT);
+            }
+        });
+
+
+        if(mCrime.getSuspect() != null){
+            mSuspectButton.setText(mCrime.getSuspect());
+        }
+
+
+        PackageManager packageManager = getActivity().getPackageManager();
+        if(packageManager.resolveActivity(pickContact, PackageManager.MATCH_DEFAULT_ONLY) == null){
+            mSuspectButton.setEnabled(false);
+        }
+
         return v;
     }
 
@@ -221,6 +289,51 @@ public class CrimeFragment extends Fragment {
             //Call the methed that we extracted with refactor to update
             //the text on the button that starts the date picker.
             updateDate();
+
+
+
+            //Else, if the request code is the code that was used to launch the contacts implicit intent,
+            //we want to do work related to getting that contact back.
+            //we also don't want to do work if the returned contact is empty.
+        }else if( requestCode == REQUEST_CONTACT && data != null) {
+
+            //Set a Uri, which is a pointer to the data that was returned
+            //the cursor requires a Uri, so we need to take the returned data and put it into a Uri.
+            Uri contactUri = data.getData();
+
+            //Create a string array that contains all of the columns that we would like to get from our query
+            String[] queryFields = new String[]{
+                    ContactsContract.Contacts.DISPLAY_NAME  //Contacts._ID
+            };
+
+            //create a new cursor. this is just like the cursor that we used in SQLite to query the database, and
+            // search through the result set
+            Cursor c = getActivity().getContentResolver().query(contactUri, queryFields, null, null, null);
+
+            try {
+                //if the result of the cursor is 0, just return
+                if (c.getCount() == 0) {
+                    return;
+                }
+
+            //we know we have data now, so we will move the cursor to the first result in the result set.
+            c.moveToFirst();
+                //Get the query results out of the cursor and put it in a string.
+                //since the query we ran only looked for a single column, we know that the column we are looking at is
+                //one with an index of 0. This is why we can pass 0 to the getString method. If we did not know that column
+                //index, but we knew the column name, we cold have done the following:
+                //c.getString(c.getColumnIndex("column name"));
+
+            String suspect = c.getString(0);
+                //now that we have the string representing the suspect out
+                //of the contacts query, we can set it to the crime.
+            mCrime.setSuspect(suspect);
+                //also update the suspect button's text to the suspects name.
+            mSuspectButton.setText(suspect);
+                }finally{
+                //make sure the cursor is closed.
+                c.close();
+            }
         }
     }
 
@@ -228,5 +341,39 @@ public class CrimeFragment extends Fragment {
     //date on the method that launches the date picker.
     private void updateDate() {
         mDateButton.setText(mCrime.getDate().toString());
+    }
+
+
+    //Method to take the parameters of the crime and
+    // format them using string resources from strings.xml to make a report that can be sent via email
+    //or some other app that can handle text.
+
+    private String getCrimeReport(){
+
+        String solvedString = null;
+
+        if(mCrime.isSolved()){
+            solvedString = getString(R.string.crime_report_solved);
+
+        }else{
+            solvedString = getString((R.string.crime_report_unsolved));
+        }
+
+
+        String dateFormat = "EEE, MMM dd";
+        String dateString = DateFormat.format(dateFormat, mCrime.getDate()).toString();
+
+        String suspect = mCrime.getSuspect();
+        if(suspect == null){
+            suspect = getString(R.string.crime_report_no_suspect);
+        }else{
+            suspect = getString(R.string.crime_report_suspect, suspect);
+        }
+
+        //Take the various strings that were created up above and send them through with the placeholder string to form the
+        //complete message. The first parameter will get put into the  %1$s of the string, second %2$s, and so forth.
+        String report = getString(R.string.crime_report, mCrime.getTitle(), dateString, solvedString, suspect);
+
+        return report;
     }
 }
